@@ -6,7 +6,7 @@ use Former\Exceptions\InvalidFrameworkException;
 use Former\Traits\Field;
 use Illuminate\Container\Container;
 use Illuminate\Support\MessageBag;
-use Illuminate\Validation\Validator;
+use Illuminate\Contracts\Validation\Validator;
 
 /**
  * Helps the user interact with the various Former components
@@ -69,6 +69,15 @@ class Former
 	 */
 	public $ids = array();
 
+	/**
+	 * A lookup table where the key is the input name,
+	 * and the value is number of times seen. This is
+	 * used to calculate unique ids.
+	 *
+	 * @var array
+	 */
+	public $names = array();
+
 	// Namespaces
 	////////////////////////////////////////////////////////////////////
 
@@ -109,7 +118,8 @@ class Former
 	public function __call($method, $parameters)
 	{
 		// Dispatch to Form\Elements
-		if ($element = $this->dispatch->toElements($method, $parameters)) {
+		// Explicitly check false since closeGroup() may return an empty string
+		if (($element = $this->dispatch->toElements($method, $parameters)) !== false) {
 			return $element;
 		}
 
@@ -300,9 +310,20 @@ class Former
 
 			foreach ($expFieldRules as $rule) {
 
-				// If we have a rule with a value
+				$parameters = null;
+
 				if (($colon = strpos($rule, ':')) !== false) {
-					$parameters = str_getcsv(substr($rule, $colon + 1));
+					$rulename = substr($rule, 0, $colon);
+
+					/**
+					 * Regular expressions may contain commas and should not be divided by str_getcsv.
+					 * For regular expressions we are just using the complete expression as a parameter.
+					 */
+					if ($rulename !== 'regex') {
+						$parameters = str_getcsv(substr($rule, $colon + 1));
+					} else {
+						$parameters = [substr($rule, $colon + 1)];
+					}
 				}
 
 				// Exclude unsupported rules
@@ -374,7 +395,7 @@ class Former
 	 */
 	public function getOption($option, $default = null)
 	{
-		return $this->app['config']->get('former::'.$option, $default);
+		return $this->app['config']->get('former.'.$option, $default);
 	}
 
 	/**
@@ -385,7 +406,7 @@ class Former
 	 */
 	public function setOption($option, $value)
 	{
-		return $this->app['config']->set('former::'.$option, $value);
+		return $this->app['config']->set('former.'.$option, $value);
 	}
 
 	////////////////////////////////////////////////////////////////////
@@ -415,7 +436,7 @@ class Former
 
 		// Reset all values
 		$this->errors = null;
-		$this->rules  = null;
+		$this->rules  = array();
 
 		return isset($closing) ? $closing : null;
 	}

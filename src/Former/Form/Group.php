@@ -43,9 +43,9 @@ class Group extends Tag
 	/**
 	 * The group help
 	 *
-	 * @var string
+	 * @var array
 	 */
-	protected $help = null;
+	protected $help = array();
 
 	/**
 	 * An array of elements to preprend the field
@@ -81,6 +81,13 @@ class Group extends Tag
 	 * @var boolean
 	 */
 	public static $opened = false;
+
+	/**
+	 * The custom group that is open
+	 *
+	 * @var Former\Form\Group
+	 */
+	public static $openGroup = null;
 
 	////////////////////////////////////////////////////////////////////
 	/////////////////////////// CORE METHODS ///////////////////////////
